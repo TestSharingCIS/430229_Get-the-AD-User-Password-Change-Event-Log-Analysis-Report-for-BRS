@@ -1,0 +1,33 @@
+﻿#Ad - Login and logoff
+
+param(
+[parameter(position=0,mandatory=$true)]
+[String] $UserName,
+[int] $DaysToLookBack=1
+)
+
+try
+{
+$PreviousDate = ((Get-Date).AddDays(-$DaysToLookBack));
+$EventIds = @(4724, 4723);
+[String]$DateString = [String] ($PreviousDate.Month) + '/'+ [String] ($PreviousDate.Day)+'/'+[String] ($PreviousDate.Year)
+$ErrorLog = ".\Eventlog_" +$(get-date -format dd-MM-yyyy-HH-mm-ss)+"_ErrorLog.txt";
+$OutputLog = ".\" + "$(get-date -format dd-MM-yyyy-HH-mm-ss)_AdUserEventLogData.csv";
+
+    $EventlogDataSecurity = @();
+
+    $EventlogDataSecurity = @(Get-WinEvent -FilterHashtable @{logname='security';id=$EventIds;StartTime=$DateString}|?{($_.message -match "$UserName")})
+    if($($EventlogDataSecurity.Count) -gt 0)
+    {
+        $EventlogDataSecurity | Export-Csv $OutputLog -Force -Confirm:$false -Append -NoTypeInformation;
+    }
+    else
+    {
+        Write-Output "There is no data found for the user: $UserName " | Out-File $ErrorLog -Force -Confirm:$false;
+    }
+
+}
+ Catch [System.Exception]
+ {
+    Write-Output "There is an error occurred with Error: $_ ." | Out-File $ErrorLog -Append -Force -Confirm:$false;
+ }
